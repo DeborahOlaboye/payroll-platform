@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { createPublicClient, http, parseUnits, encodeFunctionData } from 'viem';
-import { sepolia, arbitrumSepolia, baseSepolia, avalancheFuji, polygonAmoy } from 'viem/chains';
-import { SupportedChain, PaymasterOperation } from '@usdc-payroll/shared';
+import { sepolia, arbitrumSepolia, baseSepolia, avalancheFuji, polygon } from 'viem/chains';
+import { SupportedChain, PaymasterOperation, CHAIN_CONFIGS } from '@usdc-payroll/shared';
 import { paymasterConfig } from '../config/circle';
 import { logger } from '../config/logger';
 
@@ -23,13 +23,14 @@ export class PaymasterService {
       [SupportedChain.ARBITRUM]: arbitrumSepolia,
       [SupportedChain.BASE]: baseSepolia,
       [SupportedChain.AVALANCHE]: avalancheFuji,
-      [SupportedChain.POLYGON]: polygonAmoy
+      [SupportedChain.POLYGON]: polygon
     };
 
     Object.entries(chainMap).forEach(([chain, viemChain]) => {
+      const chainConfig = CHAIN_CONFIGS[chain as SupportedChain];
       const client = createPublicClient({
         chain: viemChain,
-        transport: http()
+        transport: http(chainConfig.rpcUrl)
       });
       this.clients.set(chain as SupportedChain, client);
     });
