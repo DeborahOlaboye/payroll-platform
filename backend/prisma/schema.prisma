@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Worker {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  walletId    String?  @unique
+  recipientId String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  payrollItems PayrollItem[]
+  auditLogs    AuditLog[]
+
+  @@map("workers")
+}
+
+model PayrollRun {
+  id           String            @id @default(uuid())
+  adminId      String
+  status       PayrollRunStatus  @default(DRAFT)
+  totalAmount  String            // Stored as string to avoid precision issues
+  totalWorkers Int
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  completedAt  DateTime?
+
+  // Relations
+  payrollItems PayrollItem[]
+  auditLogs    AuditLog[]
+
+  @@map("payroll_runs")
+}
+
+model PayrollItem {
+  id              String        @id @default(uuid())
+  payrollRunId    String
+  workerId        String
+  amount          String        // Stored as string to avoid precision issues
+  chain           SupportedChain
+  status          PayoutStatus  @default(PENDING)
+  payoutId        String?       // Circle payout ID
+  transactionHash String?
+  errorMessage    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  completedAt     DateTime?
+
+  // Relations
+  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  worker     Worker     @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  auditLogs  AuditLog[]
+
+  @@map("payroll_items")
+}
+
+model AuditLog {
+  id             String    @id @default(uuid())
+  eventType      String
+  entityType     String
+  entityId       String
+  workerId       String?
+  payrollRunId   String?
+  payrollItemId  String?
+  payload        Json?
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  worker      Worker?      @relation(fields: [workerId], references: [id], onDelete: SetNull)
+  payrollRun  PayrollRun?  @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
+  payrollItem PayrollItem? @relation(fields: [payrollItemId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model CrossChainTransfer {
+  id               String         @id @default(uuid())
+  workerId         String
+  sourceChain      SupportedChain
+  destinationChain SupportedChain
+  amount           String
+  sourceAddress    String
+  destinationAddress String
+  messageHash      String?        // CCTP message hash
+  attestation      String?        // CCTP attestation
+  status           TransferStatus @default(PENDING)
+  transactionHash  String?
+  errorMessage     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  completedAt      DateTime?
+
+  @@map("cross_chain_transfers")
+}
+
+model GasStationTransaction {
+  id              String    @id @default(uuid())
+  workerId        String
+  chain           SupportedChain
+  userOpHash      String    @unique
+  status          String    @default("pending")
+  gasUsed         String?
+  gasPrice        String?
+  transactionHash String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime?
+
+  @@map("gas_station_transactions")
+}
+
+model PaymasterOperation {
+  id              String    @id @default(uuid())
+  workerId        String
+  chain           SupportedChain
+  userOpHash      String    @unique
+  status          String    @default("pending")
+  gasUsed         String?
+  gasFeeInUSDC    String?
+  transactionHash String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime?
+
+  @@map("paymaster_operations")
+}
+
+// Enums
+enum PayrollRunStatus {
+  DRAFT
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum SupportedChain {
+  ETHEREUM
+  ARBITRUM
+  BASE
+  AVALANCHE
+  POLYGON
+}
+
+enum TransferStatus {
+  PENDING
+  ATTESTED
+  COMPLETED
+  FAILED
+}
