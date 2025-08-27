@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -29,7 +29,7 @@ model Worker {
 model PayrollRun {
   id           String            @id @default(uuid())
   adminId      String
-  status       PayrollRunStatus  @default(DRAFT)
+  status       String            @default("DRAFT")
   totalAmount  String            // Stored as string to avoid precision issues
   totalWorkers Int
   createdAt    DateTime          @default(now())
@@ -48,8 +48,8 @@ model PayrollItem {
   payrollRunId    String
   workerId        String
   amount          String        // Stored as string to avoid precision issues
-  chain           SupportedChain
-  status          PayoutStatus  @default(PENDING)
+  chain           String
+  status      String           @default("PENDING")
   payoutId        String?       // Circle payout ID
   transactionHash String?
   errorMessage    String?
@@ -73,7 +73,7 @@ model AuditLog {
   workerId       String?
   payrollRunId   String?
   payrollItemId  String?
-  payload        Json?
+  payload        String?
   createdAt      DateTime  @default(now())
 
   // Relations
@@ -87,14 +87,14 @@ model AuditLog {
 model CrossChainTransfer {
   id               String         @id @default(uuid())
   workerId         String
-  sourceChain      SupportedChain
-  destinationChain SupportedChain
+  fromChain      String
+  destinationChain String
   amount           String
   sourceAddress    String
   destinationAddress String
   messageHash      String?        // CCTP message hash
   attestation      String?        // CCTP attestation
-  status           TransferStatus @default(PENDING)
+  status         String @default("PENDING")
   transactionHash  String?
   errorMessage     String?
   createdAt        DateTime       @default(now())
@@ -107,7 +107,7 @@ model CrossChainTransfer {
 model GasStationTransaction {
   id              String    @id @default(uuid())
   workerId        String
-  chain           SupportedChain
+  chain           String
   userOpHash      String    @unique
   status          String    @default("pending")
   gasUsed         String?
@@ -123,7 +123,7 @@ model GasStationTransaction {
 model PaymasterOperation {
   id              String    @id @default(uuid())
   workerId        String
-  chain           SupportedChain
+  chain           String
   userOpHash      String    @unique
   status          String    @default("pending")
   gasUsed         String?
@@ -136,33 +136,9 @@ model PaymasterOperation {
   @@map("paymaster_operations")
 }
 
-// Enums
-enum PayrollRunStatus {
-  DRAFT
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum PayoutStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum SupportedChain {
-  ETHEREUM
-  ARBITRUM
-  BASE
-  AVALANCHE
-  POLYGON
-}
-
-enum TransferStatus {
-  PENDING
-  ATTESTED
-  COMPLETED
-  FAILED
-}
+// Note: Using String instead of enums for SQLite compatibility
+// Valid values:
+// PayrollRunStatus: DRAFT, PENDING, PROCESSING, COMPLETED, FAILED
+// PayoutStatus: PENDING, PROCESSING, COMPLETED, FAILED
+// SupportedChain: ETHEREUM, ARBITRUM, BASE, AVALANCHE, POLYGON
+// TransferStatus: PENDING, ATTESTED, COMPLETED, FAILED
